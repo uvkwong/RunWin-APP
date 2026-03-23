@@ -1,0 +1,74 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.1
+        bundler-cache: true
+    
+    - name: Install Fastlane
+      run: gem install fastlane
+    
+    - name: Install CocoaPods
+      run: sudo gem install cocoapods
+    
+    - name: Install Pod dependencies
+      run: cd sourcecode && pod install
+    
+    - name: Build iOS App
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      run: |
+        cd sourcecode
+        xcodebuild -workspace 瑞荣APP.xcworkspace/瑞荣APP.xcworkspace \
+          -scheme 瑞荣APP \
+          -configuration Release \
+          -derivedDataPath build \
+          -arch arm64 \
+          -sdk iphoneos \
+          OTHER_CODE_SIGN_FLAGS="--keychain-dir ~/Library/Keychains" \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGN_ENTITLEMENTS="" \
+          PROVISIONING_PROFILE="" \
+          PROVISIONING_PROFILE_SPECIFIER="" \
+          | xcpretty
+    
+    - name: Create IPA
+      run: |
+        cd sourcecode
+        xcodebuild -exportArchive \
+          -archivePath build/瑞荣APP.xcarchive \
+          -exportPath build/ipa \
+          -exportOptionsPlist ExportOptions.plist
+    
+    - name: Upload to artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: RunWin-APP.ipa
+        path: sourcecode/build/ipa/*.ipa
+    
+    - name: Upload to Pgyer (蒲公英)
+      env:
+        PGYER_API_KEY: ${{ secrets.PGYER_API_KEY }}
+      run: |
+        if [ -z "$PGYER_API_KEY" ]; then
+          echo "⚠️ PGYER_API_KEY not set, skipping Pgyer upload"
+        else
+          curl -F "file=@sourcecode/build/ipa/*.ipa" \
+            -F "uKey=$PGYER_API_KEY" \
+            https://www.pgyer.com/api/app/upload
+        fi
