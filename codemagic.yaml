@@ -1,0 +1,81 @@
+workflows:
+  ios-build:
+    name: Build iOS App
+    instance_type: mac_mini_m1
+    max_build_duration: 60
+    
+    environment:
+      ios_signing:
+        provisioning_profiles:
+          - name: "RunWin-APP Ad Hoc"
+      variables:
+        XCODE_WORKSPACE: "sourcecode/瑞荣APP.xcworkspace"
+        XCODE_SCHEME: "瑞荣APP"
+        BUNDLE_ID: "com.runwin.app"
+        APP_NAME: "瑞荣APP"
+        
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch:
+        include:
+          - main
+    
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd sourcecode
+          pod install
+          
+      - name: Build iOS App
+        script: |
+          cd sourcecode
+          xcodebuild clean build \
+            -workspace 瑞荣APP.xcworkspace \
+            -scheme 瑞荣APP \
+            -configuration Release \
+            -derivedDataPath build \
+            -arch arm64 \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="RunWin-APP Ad Hoc"
+            
+      - name: Create Ad Hoc IPA
+        script: |
+          cd sourcecode
+          xcodebuild -exportArchive \
+            -archivePath build/瑞荣APP.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates
+            
+      - name: Upload to Pgyer (蒲公英)
+        script: |
+          IPA_FILE=$(find sourcecode/build/ipa -name "*.ipa" -type f | head -1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "❌ IPA file not found!"
+            exit 1
+          fi
+          
+          if [ -z "$PGYER_API_KEY" ]; then
+            echo "⚠️ PGYER_API_KEY not configured"
+            echo "Upload IPA manually from Codemagic artifacts"
+          else
+            curl -F "file=@$IPA_FILE" \
+              -F "uKey=$PGYER_API_KEY" \
+              -F "_api_key=$PGYER_API_KEY" \
+              https://www.pgyer.com/api/app/upload
+          fi
+    
+    artifacts:
+      - sourcecode/build/ipa/*.ipa
+      - sourcecode/build/Logs/Build/*.log
+    
+    publishing:
+      email:
+        recipients:
+          - uvkwong@163.com
+        notify:
+          success: true
+          failure: true
