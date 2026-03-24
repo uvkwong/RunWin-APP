@@ -24,31 +24,41 @@ jobs:
     - name: Install CocoaPods
       run: sudo gem install cocoapods
     
+    - name: Rename project to ASCII (fix Chinese path encoding)
+      run: |
+        cd sourcecode
+        # Rename folder and project to ASCII names
+        mv "瑞荣APP" "RunWinApp"
+        mv "瑞荣APP.xcodeproj" "RunWinApp.xcodeproj"
+        # Fix references inside pbxproj
+        sed -i '' 's/瑞荣APP/RunWinApp/g' RunWinApp.xcodeproj/project.pbxproj
+        # Fix Podfile target name
+        sed -i '' "s/target '瑞荣APP'/target 'RunWinApp'/" Podfile
+
     - name: Install Pod dependencies
       run: cd sourcecode && pod install
-    
+
     - name: Build iOS App (Archive)
       run: |
         cd sourcecode
         xcodebuild archive \
-          -workspace 瑞荣APP.xcworkspace \
-          -scheme 瑞荣APP \
+          -workspace RunWinApp.xcworkspace \
+          -scheme RunWinApp \
           -configuration Release \
-          -archivePath build/瑞荣APP.xcarchive \
+          -archivePath build/RunWinApp.xcarchive \
           -arch arm64 \
           -sdk iphoneos \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGN_ENTITLEMENTS="" \
           PROVISIONING_PROFILE="" \
-          PROVISIONING_PROFILE_SPECIFIER="" \
-          | xcpretty
+          PROVISIONING_PROFILE_SPECIFIER=""
     
     - name: Create IPA
       run: |
         cd sourcecode
         xcodebuild -exportArchive \
-          -archivePath build/瑞荣APP.xcarchive \
+          -archivePath build/RunWinApp.xcarchive \
           -exportPath build/ipa \
           -exportOptionsPlist ExportOptions.plist \
           CODE_SIGN_IDENTITY="" \
