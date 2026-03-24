@@ -27,19 +27,16 @@ jobs:
     - name: Install Pod dependencies
       run: cd sourcecode && pod install
     
-    - name: Build iOS App
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+    - name: Build iOS App (Archive)
       run: |
         cd sourcecode
-        xcodebuild -workspace 瑞荣APP.xcworkspace/瑞荣APP.xcworkspace \
+        xcodebuild archive \
+          -workspace 瑞荣APP.xcworkspace \
           -scheme 瑞荣APP \
           -configuration Release \
-          -derivedDataPath build \
+          -archivePath build/瑞荣APP.xcarchive \
           -arch arm64 \
           -sdk iphoneos \
-          OTHER_CODE_SIGN_FLAGS="--keychain-dir ~/Library/Keychains" \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGN_ENTITLEMENTS="" \
@@ -53,7 +50,9 @@ jobs:
         xcodebuild -exportArchive \
           -archivePath build/瑞荣APP.xcarchive \
           -exportPath build/ipa \
-          -exportOptionsPlist ExportOptions.plist
+          -exportOptionsPlist ExportOptions.plist \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO
     
     - name: Upload to artifacts
       uses: actions/upload-artifact@v4
