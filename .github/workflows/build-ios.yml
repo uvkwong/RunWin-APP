@@ -54,21 +54,24 @@ jobs:
           PROVISIONING_PROFILE="" \
           PROVISIONING_PROFILE_SPECIFIER=""
     
-    - name: Create IPA
+    - name: Create IPA (package .app directly, skip signing)
       run: |
         cd sourcecode
-        xcodebuild -exportArchive \
-          -archivePath build/RunWinApp.xcarchive \
-          -exportPath build/ipa \
-          -exportOptionsPlist ExportOptions.plist \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO
+        # Find the .app inside the archive
+        APP_PATH=$(find build/RunWinApp.xcarchive -name "*.app" -type d | head -1)
+        echo "Found .app at: $APP_PATH"
+        # Package into IPA manually (no signing needed)
+        mkdir -p build/ipa/Payload
+        cp -r "$APP_PATH" build/ipa/Payload/
+        cd build/ipa
+        zip -r RunWinApp.ipa Payload/
+        echo "IPA created: $(ls -lh RunWinApp.ipa)"
     
     - name: Upload to artifacts
       uses: actions/upload-artifact@v4
       with:
         name: RunWin-APP.ipa
-        path: sourcecode/build/ipa/*.ipa
+        path: sourcecode/build/ipa/RunWinApp.ipa
     
     - name: Upload to Pgyer (蒲公英)
       env:
